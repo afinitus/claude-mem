@@ -807,9 +807,9 @@ Failed with non-blocking status code: ""bun"" is not recognized as an internal o
 3. Delete old sessions:
    ```bash
    sqlite3 ~/.claude-mem/claude-mem.db "
-     DELETE FROM observations WHERE created_at_epoch < $(date -v-30d +%s);
-     DELETE FROM session_summaries WHERE created_at_epoch < $(date -v-30d +%s);
-     DELETE FROM sdk_sessions WHERE created_at_epoch < $(date -v-30d +%s);
+     DELETE FROM observations WHERE created_at_epoch < strftime('%s', 'now', '-30 days') * 1000;
+     DELETE FROM session_summaries WHERE created_at_epoch < strftime('%s', 'now', '-30 days') * 1000;
+     DELETE FROM sdk_sessions WHERE started_at_epoch < strftime('%s', 'now', '-30 days') * 1000;
    "
    ```
 
@@ -947,7 +947,7 @@ Failed with non-blocking status code: ""bun"" is not recognized as an internal o
 3. Add indexes (if missing):
    ```bash
    sqlite3 ~/.claude-mem/claude-mem.db "
-     CREATE INDEX IF NOT EXISTS idx_sessions_project_created ON sdk_sessions(project, created_at_epoch DESC);
+     CREATE INDEX IF NOT EXISTS idx_sessions_project_started ON sdk_sessions(project, started_at_epoch DESC);
    "
    ```
 
