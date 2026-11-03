@@ -11,6 +11,7 @@ import {
   realpathSync
 } from 'fs';
 import { execSync } from 'child_process';
+import { randomUUID } from 'crypto';
 import { SettingsDefaultsManager } from '../shared/SettingsDefaultsManager.js';
 import { formatTime, groupByDate } from '../shared/timeline-formatting.js';
 import { isDirectChild, normalizePath } from '../shared/path-utils.js';
@@ -340,9 +341,17 @@ function writeClaudeMdToFolder(folderPath: string, newContent: string): void {
   // A symlinked CLAUDE.md stays a symlink: write onto its final target.
   const writeTarget = resolveSymlinkWriteTarget(claudeMdPath);
   ensureDirectoryExists(path.dirname(writeTarget));
-  const tempFile = `${writeTarget}.tmp`;
-  writeFileSync(tempFile, finalContent);
-  renameSync(tempFile, writeTarget);
+  // Random name + exclusive create, as in claude-md-utils (#5145): a fixed
+  // `CLAUDE.md.tmp` can be committed to a checkout as a symlink, and the write
+  // would follow it.
+  const tempFile = `${writeTarget}.${randomUUID()}.tmp`;
+  writeFileSync(tempFile, finalContent, { flag: 'wx' });
+  try {
+    renameSync(tempFile, writeTarget);
+  } catch (error) {
+    try { unlinkSync(tempFile); } catch { /* best effort */ }
+    throw error;
+  }
 }
 
 function regenerateFolder(
