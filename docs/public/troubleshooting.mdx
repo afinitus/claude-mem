@@ -160,9 +160,9 @@ work tracked in [issue #4068](https://github.com/thedotmack/claude-mem/issues/40
    npm install chromadb
    ```
 
-3. Check chromadb health:
+3. Check Chroma health:
    ```bash
-   npm run chroma:health
+   npx claude-mem doctor
    ```
 
 4. Windows-specific: Ensure Python is in PATH:
@@ -621,7 +621,7 @@ claude-mem: memory hooks are not active: <reason>. Fix: run `npx claude-mem inst
 
 2. View recent sessions:
    ```bash
-   npm run test:context:verbose
+   sqlite3 ~/.claude-mem/claude-mem.db "SELECT project, started_at, status FROM sdk_sessions ORDER BY started_at_epoch DESC LIMIT 10;"
    ```
 
 3. Check database integrity:
