@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
-import { mkdirSync, writeFileSync, readFileSync, existsSync, rmSync } from 'fs';
+import { mkdirSync, writeFileSync, readFileSync, existsSync, rmSync, readdirSync, symlinkSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { writeContextFile } from '../src/utils/cursor-utils';
@@ -88,8 +88,22 @@ describe('Cursor Context Update', () => {
     it('uses atomic write (no temp file left behind)', () => {
       writeContextFile(workspacePath, 'test context');
 
-      const tempFile = join(workspacePath, '.cursor', 'rules', 'claude-mem-context.mdc.tmp');
-      expect(existsSync(tempFile)).toBe(false);
+      // The temp name is random, so check the whole folder, not one fixed name.
+      const rulesDir = join(workspacePath, '.cursor', 'rules');
+      expect(readdirSync(rulesDir).filter(name => name.endsWith('.tmp'))).toEqual([]);
+    });
+
+    it.skipIf(process.platform === 'win32')('does not write through a planted .mdc.tmp symlink', () => {
+      const rulesDir = join(workspacePath, '.cursor', 'rules');
+      mkdirSync(rulesDir, { recursive: true });
+      const outsideFile = join(tempDir, 'outside-target.txt');
+      writeFileSync(outsideFile, 'precious contents');
+      symlinkSync(outsideFile, join(rulesDir, 'claude-mem-context.mdc.tmp'));
+
+      writeContextFile(workspacePath, 'test context');
+
+      expect(readFileSync(outsideFile, 'utf-8')).toBe('precious contents');
+      expect(readContextFile(workspacePath)).toContain('test context');
     });
 
     it('overwrites existing context file', () => {

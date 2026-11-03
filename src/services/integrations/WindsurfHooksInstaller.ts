@@ -1,6 +1,7 @@
 
 import path from 'path';
 import { homedir } from 'os';
+import { randomUUID } from 'crypto';
 import { existsSync, readFileSync, writeFileSync, unlinkSync, mkdirSync, renameSync } from 'fs';
 import { logger } from '../../utils/logger.js';
 import { getProjectContext } from '../../utils/project-name.js';
@@ -83,7 +84,10 @@ export function unregisterWindsurfProject(workspacePath: string): void {
 export function writeWindsurfContextFile(workspacePath: string, context: string): void {
   const rulesDir = path.join(workspacePath, '.windsurf', 'rules');
   const rulesFile = path.join(rulesDir, 'claude-mem-context.md');
-  const tempFile = `${rulesFile}.tmp`;
+  // Random name + exclusive create, as in claude-md-utils (#5145): a fixed
+  // `.tmp` sibling can be committed to the workspace as a symlink, and the
+  // write would follow it.
+  const tempFile = `${rulesFile}.${randomUUID()}.tmp`;
 
   mkdirSync(rulesDir, { recursive: true });
 
@@ -102,8 +106,13 @@ ${context}
       '\n\n*[Truncated — use MCP search for full history]*\n';
   }
 
-  writeFileSync(tempFile, content);
-  renameSync(tempFile, rulesFile);
+  writeFileSync(tempFile, content, { flag: 'wx' });
+  try {
+    renameSync(tempFile, rulesFile);
+  } catch (error) {
+    try { unlinkSync(tempFile); } catch { /* best effort */ }
+    throw error;
+  }
 }
 
 function buildHookCommand(bunPath: string, workerServicePath: string, eventName: string): string {
